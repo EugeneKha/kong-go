@@ -20,14 +20,19 @@ type KongAPIList struct {
 }
 
 type KongAPI struct {
-	Id                 string `json:"id,omitempty"`
-	Name               string `json:"name"`
-	Created_at         int64  `json:"-"`
-	Upstream_url       string `json:"upstream_url,omitempty"`
+	Id            string `json:"id,omitempty"`
+	Name          string `json:"name"`
+	Created_at    int64  `json:"-"`
+	Upstream_url  string `json:"upstream_url,omitempty"`
+	Preserve_host bool   `json:"preserve_host"`
+	// kong 0.9.x and earlier
 	Request_path       string `json:"request_path,omitempty"`
 	Request_host       string `json:"request_host,omitempty"`
-	Strip_request_path bool   `json:"strip_request_path"`
-	Preserve_host      bool   `json:"preserve_host"`
+	Strip_request_path bool   `json:"strip_request_path,omitempty"`
+	// kong 0.10.x and later
+	Hosts     []string `json:"hosts,omitempty"`
+	Uris      []string `json:"uris,omitempty"`
+	Strip_uri bool     `json:"strip_uri,omitempty"`
 }
 
 const (
@@ -42,6 +47,20 @@ func NewKongClient(httpClient *http.Client, kongAdminUri string) *KongClient {
 		kongAdminUri: strings.Trim(kongAdminUri, "/ "),
 	}
 	return &kongClient
+}
+
+func (k *KongClient) GetVersion() (string, error) {
+	data := make(map[string]interface{})
+	body, err := k.getUri(k.kongAdminUri)
+	if err != nil {
+		return "", fmt.Errorf(ERR_REQUEST_FAILED, err)
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return "", fmt.Errorf(ERR_REQUEST_FAILED, err)
+	}
+	version := data["version"].(string)
+	return version, nil
 }
 
 func (k *KongClient) GetAPIs() (KongAPIList, error) {
